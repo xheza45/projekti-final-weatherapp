@@ -48,7 +48,38 @@ function WeatherScreen({ navigation }) {
   const [search, setSearch] = useState('');
   const [suggestions, setSuggestions] = useState([]);
   const [error, setError] = useState('');
+
+  // Animated values
   const fadeAnim = useRef(new Animated.Value(0)).current;
+  const slideAnim = useRef(new Animated.Value(50)).current;
+  const pulseAnim = useRef(new Animated.Value(1)).current;
+
+  const startWeatherAnimation = () => {
+    fadeAnim.setValue(0);
+    slideAnim.setValue(50);
+
+    Animated.parallel([
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 800,
+        useNativeDriver: true,
+      }),
+      Animated.spring(slideAnim, {
+        toValue: 0,
+        friction: 6,
+        tension: 40,
+        useNativeDriver: true,
+      }),
+    ]).start();
+
+    // Pulse effect for temperature
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulseAnim, { toValue: 1.1, duration: 800, useNativeDriver: true }),
+        Animated.timing(pulseAnim, { toValue: 1, duration: 800, useNativeDriver: true }),
+      ])
+    ).start();
+  };
 
   const fetchWeatherData = async (cityName = city) => {
     try {
@@ -57,11 +88,8 @@ function WeatherScreen({ navigation }) {
       );
       setWeatherData(response.data);
       setError('');
-      Animated.timing(fadeAnim, {
-        toValue: 1,
-        duration: 800,
-        useNativeDriver: true,
-      }).start();
+      LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+      startWeatherAnimation();
     } catch (err) {
       setError('City not found or network error.');
     } finally {
@@ -97,6 +125,7 @@ function WeatherScreen({ navigation }) {
       LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
       setSuggestions(matches);
     } else {
+      LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
       setSuggestions([]);
     }
   };
@@ -170,10 +199,24 @@ function WeatherScreen({ navigation }) {
             </TouchableOpacity>
           )}
           ListFooterComponent={
-            <Animated.View style={{ opacity: fadeAnim, alignItems: 'center', marginTop: 20 }}>
+            <Animated.View
+              style={{
+                opacity: fadeAnim,
+                transform: [{ translateY: slideAnim }],
+                alignItems: 'center',
+                marginTop: 20,
+              }}
+            >
               <Text style={styles.location}>{weatherData.name}</Text>
               <Image source={{ uri: weatherIcon }} style={styles.weatherIcon} />
-              <Text style={styles.temperature}>{Math.round(weatherData.main.temp)}°C</Text>
+              <Animated.Text
+                style={[
+                  styles.temperature,
+                  { transform: [{ scale: pulseAnim }] },
+                ]}
+              >
+                {Math.round(weatherData.main.temp)}°C
+              </Animated.Text>
               <Text style={styles.weatherDescription}>{weatherData.weather[0].description}</Text>
             </Animated.View>
           }
